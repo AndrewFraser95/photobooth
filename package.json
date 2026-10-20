@@ -4,7 +4,7 @@
   "private": true,
   "description": "4-photo party photobooth",
   "scripts": {
-    "predeploy": "node -e \"require('fs').mkdirSync('dist',{recursive:true});require('fs').copyFileSync('index.html','dist/index.html');require('fs').copyFileSync('icon.png','dist/icon.png')\"",
+    "predeploy": "node -e \"require('fs').mkdirSync('dist',{recursive:true});require('fs').copyFileSync('index.html','dist/index.html');require('fs').copyFileSync('icon.png','dist/icon.png');require('fs').copyFileSync('manifest.webmanifest','dist/manifest.webmanifest')\"",
     "deploy": "gh-pages -d dist"
   },
   "devDependencies": {
