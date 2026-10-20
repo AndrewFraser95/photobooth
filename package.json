@@ -4,7 +4,8 @@
   "private": true,
   "description": "4-photo party photobooth",
   "scripts": {
-    "deploy": "gh-pages -d . --src index.html"
+    "predeploy": "node -e \"require('fs').mkdirSync('dist',{recursive:true});require('fs').copyFileSync('index.html','dist/index.html')\"",
+    "deploy": "gh-pages -d dist"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0"
