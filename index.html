@@ -5,47 +5,58 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Phil &amp; Charley's">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Photobooth</title>
+<meta name="theme-color" content="#1b0b3a">
+<link rel="apple-touch-icon" href="icon.png">
+<title>Phil &amp; Charley's Photobooth</title>
 <style>
-  :root { --bg:#111; --fg:#fff; --accent:#ff4f81; }
+  :root { --a:#ff4f81; --b:#ffb84d; --c:#7a5cff; --ink:#fff; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg);
-    font-family:-apple-system, system-ui, sans-serif; overflow:hidden; }
+  html, body { margin:0; height:100%; color:var(--ink); overflow:hidden;
+    font-family:"Avenir Next", -apple-system, system-ui, sans-serif;
+    background:radial-gradient(circle at 20% 10%, #3a1670 0%, #1b0b3a 55%, #0d0620 100%); }
   .screen { position:fixed; inset:0; display:none; flex-direction:column; align-items:center;
-    justify-content:center; padding:env(safe-area-inset-top) 20px env(safe-area-inset-bottom); gap:20px; text-align:center; }
+    justify-content:center; padding:env(safe-area-inset-top) 24px env(safe-area-inset-bottom); gap:18px; text-align:center; }
   .screen.active { display:flex; }
-  h1 { margin:0; font-size:28px; }
-  .sub { opacity:.7; margin:0; }
+  .title { margin:0; font-size:40px; line-height:1.05; font-weight:800; letter-spacing:-.5px;
+    background:linear-gradient(90deg,var(--b),var(--a),var(--c)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .title small { display:block; font-size:18px; letter-spacing:6px; text-transform:uppercase; margin-top:8px; color:#fff; -webkit-text-fill-color:#fff; opacity:.8; font-weight:600; }
+  .label { margin:6px 0 0; opacity:.7; font-size:14px; letter-spacing:2px; text-transform:uppercase; }
   .row { display:flex; gap:10px; }
-  button { font:inherit; color:var(--fg); background:#333; border:2px solid #444; border-radius:14px;
-    padding:14px 22px; font-size:20px; font-weight:600; }
-  button.sel { background:var(--accent); border-color:var(--accent); }
-  button.big { background:var(--accent); border-color:var(--accent); font-size:28px; padding:20px 48px; border-radius:50px; }
+  button { font:inherit; color:var(--ink); background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.2);
+    border-radius:16px; padding:14px 22px; font-size:20px; font-weight:700; min-width:76px; }
+  button.sel { background:linear-gradient(135deg,var(--a),var(--c)); border-color:transparent; box-shadow:0 6px 20px rgba(255,79,129,.4); }
+  button.big { background:linear-gradient(135deg,var(--b),var(--a)); border:0; font-size:30px; padding:20px 56px;
+    border-radius:60px; margin-top:12px; box-shadow:0 10px 30px rgba(255,79,129,.5); }
   button.big:disabled { opacity:.5; }
   #cam { position:fixed; inset:0; width:100%; height:100%; object-fit:cover; background:#000; }
   #cam.mirror { transform:scaleX(-1); }
-  #overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    pointer-events:none; text-shadow:0 2px 12px rgba(0,0,0,.7); }
-  #count { font-size:40vmin; font-weight:800; line-height:1; }
-  #progress { position:fixed; top:calc(env(safe-area-inset-top) + 16px); left:0; right:0; text-align:center; font-size:22px; font-weight:700; text-shadow:0 2px 8px #000; }
+  #overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none;
+    text-shadow:0 4px 24px rgba(0,0,0,.6); }
+  #count { font-size:42vmin; font-weight:900; line-height:1; }
+  #count.pop { animation:pop 1s ease-out; }
+  @keyframes pop { from { transform:scale(1.5); opacity:.2; } to { transform:scale(1); opacity:1; } }
+  #progress { position:fixed; top:calc(env(safe-area-inset-top) + 16px); left:0; right:0; display:flex; justify-content:center; gap:10px; }
+  #progress i { width:16px; height:16px; border-radius:50%; background:rgba(255,255,255,.35); border:2px solid #fff; }
+  #progress i.done { background:var(--a); border-color:var(--a); }
   #flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; transition:opacity .4s; }
   #flash.on { opacity:1; transition:none; }
   #camScreen { padding:0; display:none; }
   #camScreen.active { display:block; }
-  #result { background:#000; }
-  #strip { max-width:100%; max-height:55vh; border-radius:6px; background:#fff; }
-  #msg { color:#f99; max-width:340px; min-height:1em; }
-  .note { font-size:13px; opacity:.6; max-width:320px; margin:0; }
+  #stripImg { max-width:100%; max-height:calc(100vh - 230px); border-radius:6px; box-shadow:0 10px 40px rgba(0,0,0,.5); -webkit-touch-callout:default; }
+  #strip { display:none; }
+  #msg { color:#ffb3c6; max-width:340px; min-height:1em; margin:0; }
+  .note { font-size:14px; opacity:.75; max-width:320px; margin:0; }
 </style>
 </head>
 <body>
 
 <div id="setup" class="screen active">
-  <h1>📸 Photobooth</h1>
-  <p class="sub">Seconds between photos</p>
+  <h1 class="title">Phil &amp; Charley's<small>Photobooth</small></h1>
+  <p class="label">Seconds between photos</p>
   <div class="row" id="delays"></div>
-  <p class="sub">Camera</p>
+  <p class="label">Camera</p>
   <div class="row" id="cams">
     <button data-cam="user">Front</button>
     <button data-cam="environment">Back</button>
@@ -62,13 +73,11 @@
 </div>
 
 <div id="result" class="screen">
+  <img id="stripImg" alt="Your photo strip">
   <canvas id="strip"></canvas>
-  <p class="sub">Saved! If it didn't download, tap Save.</p>
-  <div class="row">
-    <button id="save" class="sel">Save to Photos</button>
-    <button id="again">Again</button>
-  </div>
-  <p class="note">Tip: "Save Image" in the share sheet puts it in your camera roll.</p>
+  <button id="save" class="big">Save to my phone</button>
+  <p class="note">Tap Save, then choose "Save Image".</p>
+  <button id="again">Next guests</button>
 </div>
 
 <script>
@@ -76,8 +85,8 @@
 const CAPTION = "Phil's 60th & Fraser Wedding";
 const SHOTS = 4;
 const DELAYS = [3, 5, 10];
-const CELL_W = 600, CELL_H = 450;   // each photo (4:3)
-const GAP = 30, FOOTER_H = 150;
+const CELL_W = 800, CELL_H = 600;   // each photo (4:3), stacked vertically
+const GAP = 36, FOOTER_H = 260;
 // -----------------------------------------------
 
 const $ = id => document.getElementById(id);
@@ -86,7 +95,7 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} }
 };
 let delay = +store.get('delay', 5), facing = store.get('facing', 'user');
-let stream = null, wake = null, blob = null;
+let stream = null, wake = null, blob = null, imgUrl = null;
 
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
@@ -136,37 +145,58 @@ async function flash() {
   $('flash').classList.remove('on');
 }
 
+function wrap(g, text, maxW) {
+  const lines = [];
+  let cur = '';
+  text.split(' ').forEach(w => {
+    const t = cur ? cur + ' ' + w : w;
+    if (cur && g.measureText(t).width > maxW) { lines.push(cur); cur = w; } else cur = t;
+  });
+  lines.push(cur);
+  return lines;
+}
+
 function compose(shots) {
-  const W = GAP + shots.length * (CELL_W + GAP), H = GAP + CELL_H + FOOTER_H;
+  const W = CELL_W + 2 * GAP, H = GAP + shots.length * (CELL_H + GAP) + FOOTER_H;
   const c = $('strip');
   c.width = W; c.height = H;
   const g = c.getContext('2d');
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
-  shots.forEach((s, i) => g.drawImage(s, GAP + i * (CELL_W + GAP), GAP));
-  g.fillStyle = '#111'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  let size = 80;
-  g.font = `700 ${size}px -apple-system, Helvetica, Arial, sans-serif`;
-  while (g.measureText(CAPTION).width > W - 2 * GAP && size > 20) {
-    size -= 4; g.font = `700 ${size}px -apple-system, Helvetica, Arial, sans-serif`;
-  }
-  g.fillText(CAPTION, W / 2, GAP + CELL_H + FOOTER_H / 2 + 5);
+  shots.forEach((s, i) => g.drawImage(s, GAP, GAP + i * (CELL_H + GAP)));
+  const top = GAP + shots.length * (CELL_H + GAP);
+  const grad = g.createLinearGradient(0, top, W, H);
+  grad.addColorStop(0, '#ffb84d'); grad.addColorStop(.5, '#ff4f81'); grad.addColorStop(1, '#7a5cff');
+  g.fillStyle = grad; g.fillRect(0, top - GAP / 2, W, FOOTER_H + GAP / 2);
+  g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  // two balanced lines, shrunk to fit
+  let size = 84, lines;
+  do {
+    g.font = `800 ${size}px "Avenir Next", -apple-system, Helvetica, Arial, sans-serif`;
+    lines = wrap(g, CAPTION, W - 2 * GAP);
+    size -= 4;
+  } while ((lines.length > 2 || lines.some(l => g.measureText(l).width > W - 2 * GAP)) && size > 24);
+  const lh = (size + 4) * 1.15, mid = top - GAP / 2 + (FOOTER_H + GAP / 2) / 2;
+  lines.forEach((l, i) => g.fillText(l, W / 2, mid + (i - (lines.length - 1) / 2) * lh));
   return new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
 }
 
-function download() {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `photobooth-${Date.now()}.jpg`;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
-}
-
-async function share() {
+async function save() {
   const file = new File([blob], `photobooth-${Date.now()}.jpg`, { type: 'image/jpeg' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file] }); return; } catch (e) { if (e.name === 'AbortError') return; }
   }
-  download();
+  const a = document.createElement('a');
+  a.href = imgUrl; a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function dots(n) {
+  $('progress').innerHTML = '';
+  for (let i = 0; i < SHOTS; i++) {
+    const d = document.createElement('i');
+    if (i < n) d.className = 'done';
+    $('progress').appendChild(d);
+  }
 }
 
 async function run() {
@@ -183,26 +213,32 @@ async function run() {
   try { wake = await navigator.wakeLock?.request('screen'); } catch {}
   show('camScreen');
   const shots = [];
-  for (let i = 1; i <= SHOTS; i++) {
-    $('progress').textContent = `Photo ${i} of ${SHOTS}`;
-    for (let t = delay; t > 0; t--) { $('count').textContent = t; await sleep(1000); }
+  for (let i = 0; i < SHOTS; i++) {
+    dots(i);
+    for (let t = delay; t > 0; t--) {
+      const c = $('count');
+      c.textContent = t; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
+      await sleep(1000);
+    }
     $('count').textContent = '';
     shots.push(grab());
     await flash();
     await sleep(400);
   }
-  $('progress').textContent = '';
+  dots(SHOTS);
   stream.getTracks().forEach(t => t.stop());
   try { wake?.release(); } catch {}
   blob = await compose(shots);
+  if (imgUrl) URL.revokeObjectURL(imgUrl);
+  imgUrl = URL.createObjectURL(blob);
+  $('stripImg').src = imgUrl;
   show('result');
-  download();
   $('start').disabled = false;
 }
 
 $('start').onclick = run;
 $('again').onclick = () => show('setup');
-$('save').onclick = share;
+$('save').onclick = save;
 renderOptions();
 </script>
 </body>
