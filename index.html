@@ -13,10 +13,11 @@
 <style>
   :root { --a:#ff4f81; --b:#ffb84d; --c:#7a5cff; --ink:#fff; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin:0; height:100%; color:var(--ink); overflow:hidden;
+  html { background:#0d0620; }
+  html, body { margin:0; height:100%; min-height:100dvh; color:var(--ink); overflow:hidden;
     font-family:"Avenir Next", -apple-system, system-ui, sans-serif;
     background:radial-gradient(circle at 20% 10%, #3a1670 0%, #1b0b3a 55%, #0d0620 100%); }
-  .screen { position:fixed; inset:0; display:none; flex-direction:column; align-items:center;
+  .screen { position:fixed; top:0; left:0; right:0; height:100dvh; display:none; flex-direction:column; align-items:center;
     justify-content:center; padding:env(safe-area-inset-top) 24px env(safe-area-inset-bottom); gap:18px; text-align:center; }
   .screen.active { display:flex; }
   .title { margin:0; font-size:40px; line-height:1.05; font-weight:800; letter-spacing:-.5px;
@@ -44,7 +45,14 @@
   #flash.on { opacity:1; transition:none; }
   #camScreen { padding:0; display:none; }
   #camScreen.active { display:block; }
-  #stripImg { max-width:100%; max-height:calc(100vh - 230px); border-radius:6px; box-shadow:0 10px 40px rgba(0,0,0,.5); -webkit-touch-callout:default; }
+  #result { justify-content:flex-start; gap:12px; padding-top:calc(env(safe-area-inset-top) + 14px); padding-bottom:calc(env(safe-area-inset-bottom) + 14px); }
+  #stripBox { flex:1 1 0; min-height:0; width:100%; display:flex; justify-content:center; }
+  #stripImg { max-width:100%; max-height:100%; object-fit:contain; border-radius:6px; box-shadow:0 10px 40px rgba(0,0,0,.5); -webkit-touch-callout:default; }
+  #result button { flex:none; }
+  #result button.big { margin-top:0; padding:16px 44px; font-size:26px; }
+  .hint { flex:none; position:relative; background:#fff; color:#1b0b3a; border-radius:16px; padding:10px 16px; font-size:16px; font-weight:700; max-width:340px; }
+  .hint::after { content:""; position:absolute; left:50%; bottom:-9px; width:18px; height:18px; background:#fff; transform:translateX(-50%) rotate(45deg); }
+  .hint b { color:#e0306a; }
   #strip { display:none; }
   #msg { color:#ffb3c6; max-width:340px; min-height:1em; margin:0; }
   .note { font-size:14px; opacity:.75; max-width:320px; margin:0; }
@@ -73,10 +81,10 @@
 </div>
 
 <div id="result" class="screen">
-  <img id="stripImg" alt="Your photo strip">
+  <div id="stripBox"><img id="stripImg" alt="Your photo strip"></div>
   <canvas id="strip"></canvas>
+  <div class="hint">Tap <b>Save to my phone</b>, then tap <b>Save Image</b></div>
   <button id="save" class="big">Save to my phone</button>
-  <p class="note">Tap Save, then choose "Save Image".</p>
   <button id="again">Next guests</button>
 </div>
 
