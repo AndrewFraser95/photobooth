@@ -1,0 +1,12 @@
+{
+  "name": "photobooth",
+  "version": "1.0.0",
+  "private": true,
+  "description": "4-photo party photobooth",
+  "scripts": {
+    "deploy": "gh-pages -d . --src index.html"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
+  }
+}
