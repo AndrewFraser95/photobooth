@@ -1,0 +1,10 @@
+{
+  "name": "Phil & Charley's Photobooth",
+  "short_name": "Phil & Charley's",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0620",
+  "theme_color": "#0d0620",
+  "icons": [{ "src": "icon.png", "sizes": "180x180", "type": "image/png" }]
+}
