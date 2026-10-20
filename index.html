@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Photobooth</title>
+<style>
+  :root { --bg:#111; --fg:#fff; --accent:#ff4f81; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font-family:-apple-system, system-ui, sans-serif; overflow:hidden; }
+  .screen { position:fixed; inset:0; display:none; flex-direction:column; align-items:center;
+    justify-content:center; padding:env(safe-area-inset-top) 20px env(safe-area-inset-bottom); gap:20px; text-align:center; }
+  .screen.active { display:flex; }
+  h1 { margin:0; font-size:28px; }
+  .sub { opacity:.7; margin:0; }
+  .row { display:flex; gap:10px; }
+  button { font:inherit; color:var(--fg); background:#333; border:2px solid #444; border-radius:14px;
+    padding:14px 22px; font-size:20px; font-weight:600; }
+  button.sel { background:var(--accent); border-color:var(--accent); }
+  button.big { background:var(--accent); border-color:var(--accent); font-size:28px; padding:20px 48px; border-radius:50px; }
+  button.big:disabled { opacity:.5; }
+  #cam { position:fixed; inset:0; width:100%; height:100%; object-fit:cover; background:#000; }
+  #cam.mirror { transform:scaleX(-1); }
+  #overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    pointer-events:none; text-shadow:0 2px 12px rgba(0,0,0,.7); }
+  #count { font-size:40vmin; font-weight:800; line-height:1; }
+  #progress { position:fixed; top:calc(env(safe-area-inset-top) + 16px); left:0; right:0; text-align:center; font-size:22px; font-weight:700; text-shadow:0 2px 8px #000; }
+  #flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; transition:opacity .4s; }
+  #flash.on { opacity:1; transition:none; }
+  #camScreen { padding:0; display:none; }
+  #camScreen.active { display:block; }
+  #result { background:#000; }
+  #strip { max-width:100%; max-height:55vh; border-radius:6px; background:#fff; }
+  #msg { color:#f99; max-width:340px; min-height:1em; }
+  .note { font-size:13px; opacity:.6; max-width:320px; margin:0; }
+</style>
+</head>
+<body>
+
+<div id="setup" class="screen active">
+  <h1>📸 Photobooth</h1>
+  <p class="sub">Seconds between photos</p>
+  <div class="row" id="delays"></div>
+  <p class="sub">Camera</p>
+  <div class="row" id="cams">
+    <button data-cam="user">Front</button>
+    <button data-cam="environment">Back</button>
+  </div>
+  <button class="big" id="start">Start</button>
+  <p id="msg"></p>
+</div>
+
+<div id="camScreen" class="screen">
+  <video id="cam" playsinline muted autoplay></video>
+  <div id="progress"></div>
+  <div id="overlay"><div id="count"></div></div>
+  <div id="flash"></div>
+</div>
+
+<div id="result" class="screen">
+  <canvas id="strip"></canvas>
+  <p class="sub">Saved! If it didn't download, tap Save.</p>
+  <div class="row">
+    <button id="save" class="sel">Save to Photos</button>
+    <button id="again">Again</button>
+  </div>
+  <p class="note">Tip: "Save Image" in the share sheet puts it in your camera roll.</p>
+</div>
+
+<script>
+// ---- Config: change these for other events ----
+const CAPTION = "Phil's 60th & Fraser Wedding";
+const SHOTS = 4;
+const DELAYS = [3, 5, 10];
+const CELL_W = 600, CELL_H = 450;   // each photo (4:3)
+const GAP = 30, FOOTER_H = 150;
+// -----------------------------------------------
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { return localStorage.getItem(k) || d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} }
+};
+let delay = +store.get('delay', 5), facing = store.get('facing', 'user');
+let stream = null, wake = null, blob = null;
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+}
+
+function renderOptions() {
+  $('delays').innerHTML = '';
+  DELAYS.forEach(d => {
+    const b = document.createElement('button');
+    b.textContent = d + 's';
+    b.className = d === delay ? 'sel' : '';
+    b.onclick = () => { delay = d; store.set('delay', d); renderOptions(); };
+    $('delays').appendChild(b);
+  });
+  document.querySelectorAll('#cams button').forEach(b => {
+    b.className = b.dataset.cam === facing ? 'sel' : '';
+    b.onclick = () => { facing = b.dataset.cam; store.set('facing', facing); renderOptions(); };
+  });
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function openCamera() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false
+  });
+  const v = $('cam');
+  v.srcObject = stream;
+  v.classList.toggle('mirror', facing === 'user');
+  await v.play();
+}
+
+function grab() {
+  const v = $('cam'), c = document.createElement('canvas');
+  c.width = CELL_W; c.height = CELL_H;
+  const ratio = CELL_W / CELL_H, vw = v.videoWidth, vh = v.videoHeight;
+  let sw = vw, sh = vw / ratio;
+  if (sh > vh) { sh = vh; sw = vh * ratio; }
+  c.getContext('2d').drawImage(v, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, CELL_W, CELL_H);
+  return c;
+}
+
+async function flash() {
+  $('flash').classList.add('on');
+  await sleep(80);
+  $('flash').classList.remove('on');
+}
+
+function compose(shots) {
+  const W = GAP + shots.length * (CELL_W + GAP), H = GAP + CELL_H + FOOTER_H;
+  const c = $('strip');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  shots.forEach((s, i) => g.drawImage(s, GAP + i * (CELL_W + GAP), GAP));
+  g.fillStyle = '#111'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  let size = 80;
+  g.font = `700 ${size}px -apple-system, Helvetica, Arial, sans-serif`;
+  while (g.measureText(CAPTION).width > W - 2 * GAP && size > 20) {
+    size -= 4; g.font = `700 ${size}px -apple-system, Helvetica, Arial, sans-serif`;
+  }
+  g.fillText(CAPTION, W / 2, GAP + CELL_H + FOOTER_H / 2 + 5);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
+}
+
+function download() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `photobooth-${Date.now()}.jpg`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+}
+
+async function share() {
+  const file = new File([blob], `photobooth-${Date.now()}.jpg`, { type: 'image/jpeg' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  download();
+}
+
+async function run() {
+  $('msg').textContent = '';
+  $('start').disabled = true;
+  try {
+    if (!navigator.mediaDevices) throw new Error('Camera needs HTTPS. Open the hosted https:// link in Safari.');
+    await openCamera();
+  } catch (e) {
+    $('msg').textContent = 'Camera error: ' + e.message;
+    $('start').disabled = false;
+    return;
+  }
+  try { wake = await navigator.wakeLock?.request('screen'); } catch {}
+  show('camScreen');
+  const shots = [];
+  for (let i = 1; i <= SHOTS; i++) {
+    $('progress').textContent = `Photo ${i} of ${SHOTS}`;
+    for (let t = delay; t > 0; t--) { $('count').textContent = t; await sleep(1000); }
+    $('count').textContent = '';
+    shots.push(grab());
+    await flash();
+    await sleep(400);
+  }
+  $('progress').textContent = '';
+  stream.getTracks().forEach(t => t.stop());
+  try { wake?.release(); } catch {}
+  blob = await compose(shots);
+  show('result');
+  download();
+  $('start').disabled = false;
+}
+
+$('start').onclick = run;
+$('again').onclick = () => show('setup');
+$('save').onclick = share;
+renderOptions();
+</script>
+</body>
+</html>
