@@ -33,14 +33,16 @@
   button.big:disabled { opacity:.5; }
   #cam { position:fixed; inset:0; width:100%; height:100%; object-fit:cover; background:#000; }
   #cam.mirror { transform:scaleX(-1); }
-  #overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none;
-    text-shadow:0 4px 24px rgba(0,0,0,.6); }
-  #count { font-family:var(--serif); font-size:42vmin; font-weight:400; line-height:1; }
   #count.pop { animation:pop 1s ease-out; }
   @keyframes pop { from { transform:scale(1.4); opacity:.2; } to { transform:scale(1); opacity:1; } }
-  #progress { position:fixed; top:calc(env(safe-area-inset-top) + 16px); left:0; right:0; display:flex; justify-content:center; gap:10px; }
+  #progress { position:fixed; bottom:calc(env(safe-area-inset-bottom) + 24px); left:0; right:0; display:flex; justify-content:center; gap:10px; }
   #progress i { width:14px; height:14px; border-radius:50%; background:rgba(255,255,255,.3); border:2px solid #fff; }
   #progress i.done { background:var(--gold); border-color:var(--gold); }
+  #frame { position:fixed; display:flex; align-items:center; justify-content:center; pointer-events:none;
+    border:3px solid var(--gold); border-radius:6px; box-shadow:0 0 0 100vmax rgba(0,0,0,.6); }
+  #frameHint { position:fixed; left:0; right:0; text-align:center; color:var(--gold); font-size:15px; font-weight:700; letter-spacing:2px;
+    text-transform:uppercase; pointer-events:none; }
+  #count { font-family:var(--serif); font-weight:400; line-height:1; color:#fff; text-shadow:0 4px 24px rgba(0,0,0,.6); }
   #flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; transition:opacity .4s; }
   #flash.on { opacity:1; transition:none; }
   #camScreen { padding:0; display:none; }
@@ -71,13 +73,14 @@
   </div>
   <button class="big" id="start">Start</button>
   <p id="msg"></p>
-  <span class="ver">v6</span>
+  <span class="ver">v7</span>
 </div>
 
 <div id="camScreen" class="screen">
   <video id="cam" playsinline muted autoplay></video>
   <div id="progress"></div>
-  <div id="overlay"><div id="count"></div></div>
+  <div id="frame"><div id="count"></div></div>
+  <div id="frameHint">Keep your heads inside the frame</div>
   <div id="flash"></div>
 </div>
 
@@ -138,13 +141,27 @@ async function openCamera() {
   await v.play();
 }
 
+// The gold frame on the preview is exactly what gets captured (WYSIWYG).
+function frameRect() {
+  const W = innerWidth, m = 14, w = W - 2 * m, h = w / (CELL_W / CELL_H);
+  return { x: m, y: 52, w, h };
+}
+
+function layoutFrame() {
+  const f = frameRect(), fr = $('frame');
+  fr.style.left = f.x + 'px'; fr.style.top = f.y + 'px';
+  fr.style.width = f.w + 'px'; fr.style.height = f.h + 'px';
+  $('count').style.fontSize = Math.round(f.h * 0.7) + 'px';
+  $('frameHint').style.top = (f.y + f.h + 12) + 'px';
+}
+
 function grab() {
   const v = $('cam'), c = document.createElement('canvas');
   c.width = CELL_W; c.height = CELL_H;
-  const ratio = CELL_W / CELL_H, vw = v.videoWidth, vh = v.videoHeight;
-  let sw = vw, sh = vw / ratio;
-  if (sh > vh) { sh = vh; sw = vh * ratio; }
-  c.getContext('2d').drawImage(v, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, CELL_W, CELL_H);
+  const W = v.clientWidth, H = v.clientHeight, vw = v.videoWidth, vh = v.videoHeight;
+  const k = Math.max(W / vw, H / vh);                       // object-fit: cover scale
+  const ox = (W - vw * k) / 2, oy = (H - vh * k) / 2, f = frameRect();
+  c.getContext('2d').drawImage(v, (f.x - ox) / k, (f.y - oy) / k, f.w / k, f.h / k, 0, 0, CELL_W, CELL_H);
   return c;
 }
 
@@ -219,6 +236,7 @@ async function run() {
   }
   try { wake = await navigator.wakeLock?.request('screen'); } catch {}
   show('camScreen');
+  layoutFrame();
   const shots = [];
   for (let i = 0; i < SHOTS; i++) {
     dots(i);
@@ -246,6 +264,7 @@ async function run() {
 $('start').onclick = run;
 $('again').onclick = () => show('setup');
 $('save').onclick = save;
+addEventListener('resize', layoutFrame);
 renderOptions();
 </script>
 </body>
