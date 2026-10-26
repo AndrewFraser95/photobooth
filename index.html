@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Phil &amp; Charley's">
+<meta name="apple-mobile-web-app-title" content="Photobooth">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0e0e0e">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.webmanifest">
-<title>Phil &amp; Charley's Photobooth</title>
+<title>Photobooth</title>
 <style>
   :root { --bg:#0e0e0e; --cream:#f4efe6; --gold:#c8a96a; --ink:#f4efe6; --serif:"Didot","Bodoni 72",Georgia,"Times New Roman",serif; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -23,6 +23,14 @@
   .screen.active { display:flex; }
   .title { margin:0; font-family:var(--serif); font-size:44px; line-height:1.05; font-weight:400; font-style:italic; color:var(--cream); }
   .title small { display:block; font-family:-apple-system, system-ui, sans-serif; font-style:normal; font-size:14px; letter-spacing:7px; text-transform:uppercase; margin-top:12px; color:var(--gold); font-weight:600; }
+  #setup { justify-content:flex-start; overflow-y:auto; }
+  #setup > :first-child { margin-top:auto; }
+  #setup > :last-child { margin-bottom:auto; }
+  .title.small-title { font-size:36px; }
+  input[type=text] { width:100%; max-width:340px; font:inherit; font-size:20px; text-align:center; color:var(--cream); background:rgba(244,239,230,.08);
+    border:1.5px solid rgba(244,239,230,.35); border-radius:12px; padding:14px 16px; outline:none; }
+  input[type=text]:focus { border-color:var(--gold); }
+  input[type=text]::placeholder { color:rgba(244,239,230,.4); }
   .label { margin:6px 0 0; opacity:.6; font-size:13px; letter-spacing:3px; text-transform:uppercase; }
   .row { display:flex; gap:10px; }
   button { font:inherit; color:var(--cream); background:transparent; border:1.5px solid rgba(244,239,230,.35);
@@ -63,7 +71,11 @@
 <body>
 
 <div id="setup" class="screen active">
-  <h1 class="title">Phil &amp; Charley's<small>Photobooth</small></h1>
+  <h1 class="title">Photobooth<small>Set up your event</small></h1>
+  <p class="label">Text on the photo strip</p>
+  <input type="text" id="caption" maxlength="48" placeholder="e.g. Sam's 30th Birthday" autocomplete="off" autocapitalize="words">
+  <p class="label">Photos per strip</p>
+  <div class="row" id="counts"></div>
   <p class="label">Seconds between photos</p>
   <div class="row" id="delays"></div>
   <p class="label">Camera</p>
@@ -73,7 +85,7 @@
   </div>
   <button class="big" id="start">Start</button>
   <p id="msg"></p>
-  <span class="ver">v7</span>
+  <span class="ver">v8</span>
 </div>
 
 <div id="camScreen" class="screen">
@@ -93,9 +105,9 @@
 </div>
 
 <script>
-// ---- Config: change these for other events ----
-const CAPTION = "Phil's 60th & Fraser Wedding";
-const SHOTS = 4;
+// ---- Options ----
+const DEFAULT_CAPTION = "Photobooth";
+const COUNTS = [3, 4];
 const DELAYS = [3, 5, 10];
 const CELL_W = 800, CELL_H = 600;   // each photo (4:3), stacked vertically
 const GAP = 36, FOOTER_H = 260;
@@ -106,22 +118,34 @@ const store = {
   get(k, d) { try { return localStorage.getItem(k) || d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch {} }
 };
-let delay = +store.get('delay', 5), facing = store.get('facing', 'user');
+// Settings persist on this device. A link like ?text=Sam%27s+30th&shots=3&delay=5 pre-sets them.
+const qs = new URLSearchParams(location.search);
+const pick = (v, allowed, d) => allowed.includes(+v) ? +v : d;
+let caption = (qs.get('text') ?? store.get('caption', '')).trim().slice(0, 48);
+let shotCount = pick(qs.get('shots') ?? store.get('shots', 4), COUNTS, 4);
+let delay = pick(qs.get('delay') ?? store.get('delay', 5), DELAYS, 5);
+let facing = store.get('facing', 'user');
 let stream = null, wake = null, blob = null, imgUrl = null;
 
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
 }
 
-function renderOptions() {
-  $('delays').innerHTML = '';
-  DELAYS.forEach(d => {
+function renderRow(id, values, current, label, onPick) {
+  $(id).innerHTML = '';
+  values.forEach(v => {
     const b = document.createElement('button');
-    b.textContent = d + 's';
-    b.className = d === delay ? 'sel' : '';
-    b.onclick = () => { delay = d; store.set('delay', d); renderOptions(); };
-    $('delays').appendChild(b);
+    b.textContent = label(v);
+    b.className = v === current ? 'sel' : '';
+    b.onclick = () => { onPick(v); renderOptions(); };
+    $(id).appendChild(b);
   });
+}
+
+function renderOptions() {
+  $('caption').value = caption;
+  renderRow('counts', COUNTS, shotCount, v => v, v => { shotCount = v; store.set('shots', v); });
+  renderRow('delays', DELAYS, delay, v => v + 's', v => { delay = v; store.set('delay', v); });
   document.querySelectorAll('#cams button').forEach(b => {
     b.className = b.dataset.cam === facing ? 'sel' : '';
     b.onclick = () => { facing = b.dataset.cam; store.set('facing', facing); renderOptions(); };
@@ -196,7 +220,7 @@ function compose(shots) {
   let size = 84, lines;
   do {
     g.font = `italic 400 ${size}px Didot, "Bodoni 72", Georgia, "Times New Roman", serif`;
-    lines = wrap(g, CAPTION, W - 2 * GAP);
+    lines = wrap(g, caption || DEFAULT_CAPTION, W - 2 * GAP);
     size -= 4;
   } while ((lines.length > 2 || lines.some(l => g.measureText(l).width > W - 2 * GAP)) && size > 24);
   const lh = (size + 4) * 1.15, mid = top + 14 + (FOOTER_H - 14) / 2 - 10;
@@ -216,7 +240,7 @@ async function save() {
 
 function dots(n) {
   $('progress').innerHTML = '';
-  for (let i = 0; i < SHOTS; i++) {
+  for (let i = 0; i < shotCount; i++) {
     const d = document.createElement('i');
     if (i < n) d.className = 'done';
     $('progress').appendChild(d);
@@ -224,6 +248,8 @@ function dots(n) {
 }
 
 async function run() {
+  caption = $('caption').value.trim();
+  store.set('caption', caption);
   $('msg').textContent = '';
   $('start').disabled = true;
   try {
@@ -238,7 +264,7 @@ async function run() {
   show('camScreen');
   layoutFrame();
   const shots = [];
-  for (let i = 0; i < SHOTS; i++) {
+  for (let i = 0; i < shotCount; i++) {
     dots(i);
     for (let t = delay; t > 0; t--) {
       const c = $('count');
@@ -250,7 +276,7 @@ async function run() {
     await flash();
     await sleep(400);
   }
-  dots(SHOTS);
+  dots(shotCount);
   stream.getTracks().forEach(t => t.stop());
   try { wake?.release(); } catch {}
   blob = await compose(shots);
