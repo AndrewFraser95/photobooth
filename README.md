@@ -1,15 +1,17 @@
-# Photobooth
+﻿# Photobooth
 
-Single-file 4-photo booth for iPhone Safari. Caption and settings are constants at the top of the script in `index.html`.
+Single-file photobooth for iPhone Safari. Guests get a strip of 3 or 4 photos with the host's own text at the bottom.
+
+## Set up an event
+Open the app, type the text for the strip (e.g. "Sam's 30th Birthday"), choose 3 or 4 photos, the delay (3/5/10s) and the camera. Settings are remembered on that device.
+
+To share a pre-set link: `https://andrewfraser.com/photobooth/?text=Sam%27s%2030th&shots=3&delay=5`
 
 ## Host it (HTTPS required for the camera)
-`npm install` then `npm run deploy` publishes `index.html` to the `gh-pages` branch.
+`npm install` then `npm run deploy` publishes to the `gh-pages` branch.
 In the GitHub repo: Settings > Pages > deploy from branch `gh-pages` (root).
-Live at https://andrewfraser95.github.io/photobooth/
 
 ## On the iPhone
 1. Open the https link in Safari, allow the camera.
 2. Optional: Share > Add to Home Screen for fullscreen.
-3. Pick 3s / 5s / 10s, tap Start. After 4 photos the strip downloads.
-
-iOS shows a one-tap "Download" prompt and saves to Files. Tap **Save to Photos** > Save Image to put it in the camera roll.
+3. Set up the event, tap Start. After the photos, guests tap **Save to my phone** > Save Image.

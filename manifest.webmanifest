@@ -1,6 +1,6 @@
 {
-  "name": "Phil & Charley's Photobooth",
-  "short_name": "Phil & Charley's",
+  "name": "Photobooth",
+  "short_name": "Photobooth",
   "start_url": ".",
   "display": "standalone",
   "orientation": "portrait",
