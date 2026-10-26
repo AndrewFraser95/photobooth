@@ -65,6 +65,7 @@
   .hint::after { content:""; position:absolute; left:50%; bottom:-9px; width:18px; height:18px; background:var(--cream); transform:translateX(-50%) rotate(45deg); }
   .hint b { color:#8a6a24; }
   #msg { color:#e8a0a0; max-width:340px; min-height:1em; margin:0; }
+  .tip { color:var(--cream); font-size:13px; opacity:.55; margin-top:6px; }
   .ver { position:absolute; bottom:calc(env(safe-area-inset-bottom) + 6px); font-size:11px; opacity:.3; }
 </style>
 </head>
@@ -85,7 +86,8 @@
   </div>
   <button class="big" id="start">Start</button>
   <p id="msg"></p>
-  <span class="ver">v8</span>
+  <a class="tip" href="https://ko-fi.com/andrewfraserprogrammer" target="_blank" rel="noopener">Enjoying this? Leave a tip</a>
+  <span class="ver">v9</span>
 </div>
 
 <div id="camScreen" class="screen">
